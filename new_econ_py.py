@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas.tseries.offsets import YearBegin, MonthBegin
+from pandas.tseries.offsets import YearBegin, MonthBegin, MonthEnd
 from dateutil.relativedelta import *
 import cx_Oracle as cxo
 import matplotlib.pyplot as plt
@@ -23,7 +23,7 @@ plt.rcParams['axes.unicode_minus'] = False
 
 locale.setlocale(locale.LC_ALL, 'korean')
 
-ed_date='20180630'
+ed_date='20180731'
 
 class sql_load:
 
@@ -430,8 +430,8 @@ class plot:
     def kr_bd_st_plt(self, size, frq):
 
         self.fig_set_size_centimeter(size)
-
-        self.data.plot(ax=self.ax, legend=True, lw=3)
+        dt = pd.to_datetime(ed_date) - relativedelta(years=1)
+        self.data.loc[dt:].plot(ax=self.ax, legend=True, lw=3)
 
         self.ax_one_legend()
 
@@ -444,9 +444,9 @@ class plot:
 
         lt_dt = pd.to_datetime(date)  ## 현재일
 
-        thrm_dt = lt_dt - relativedelta(months=3) + MonthBegin()  ## 3개월전
-        sxm_dt = lt_dt - relativedelta(months=6) + MonthBegin()  ## 6개월전
-        ony_dt = lt_dt - relativedelta(months=12) + MonthBegin()  ## 1년전
+        thrm_dt = lt_dt - relativedelta(months=3) + MonthBegin(0)  ## 3개월전
+        sxm_dt = lt_dt - relativedelta(months=6) + MonthBegin(0)  ## 6개월전
+        ony_dt = lt_dt - relativedelta(months=12) + MonthBegin(0)  ## 1년전
 
         ## Data 추출 및 사전작업
         data_c = self.data[lt]
@@ -540,7 +540,7 @@ class plot:
         self.esc_option()
 
         self.ax.legend(loc='upper center', ncol=len(self.columns) + 1,
-                       bbox_to_anchor=(0.5, 1.18), frameon=False)  # legend(범주) 변경
+                       bbox_to_anchor=(0.5, 1.23), frameon=False)  # legend(범주) 변경
 
         return self.fig, self.ax
 
@@ -824,7 +824,7 @@ FROM
 """
 
 kr_mcr_dt = sql_ld.sql_reader(kr_mcr_sql, cond=True)
-plot(kr_mcr_dt).exp_plot(size = (23.52, 11.2))
+plot(kr_mcr_dt.sort_index()).exp_plot(size = (23.52, 11.2))
 plt.savefig('Test_Data/exp_plot.png', bbox_inches = 'tight')
 
 kr_mcr_dt[['국가별수출액', '국가별수입액', '무역수지']] = kr_mcr_dt[['국가별수출액'
@@ -1088,70 +1088,48 @@ tbl_kr_bd_st.to_csv('Test_Data/tbl_kr_bd_st.csv', encoding = 'cp949')
 sql_kr_bd = """
 SELECT A.TRD_DT, A.국고_1Y, A.국고_3Y, A.국고_5Y, A.국고_10Y
        , A.국고_20Y, A.국고_30Y, B.회사_3Y 
-FROM 
+FROM
 (
-  SELECT trd_dt,
-         MIN (CASE WHEN a1.exp_month = '0012' THEN a1.yield END) 국고_1y,
-         MIN (CASE WHEN a1.exp_month = '0036' THEN a1.yield END) 국고_3y,
-         MIN (CASE WHEN a1.exp_month = '0060' THEN a1.yield END) 국고_5y,
-         MIN (CASE WHEN a1.exp_month = '0120' THEN a1.yield END) 국고_10y,
-         MIN (CASE WHEN a1.exp_month = '0240' THEN a1.yield END) 국고_20y,
-         MIN (CASE WHEN a1.exp_month = '0360' THEN a1.yield END) 국고_30y
-   FROM FNB_BOND_MATRIX@D_FNDB2_UFNGDBA a1
-   WHERE     a1.bond_cd IN ('1013000', '7010123', 'F223001', '7040113')
-         AND a1.INST_CD = 'C'
-         AND exp_month IN
-                ('0001','0003','0006',
-                 '0012','0024','0036',
-                 '0060','0120','0240','0360')
-         AND a1.trd_dt BETWEEN '20170321' AND '20180430'
+SELECT trd_dt,
+     MIN (CASE WHEN a1.exp_month = '0012' THEN a1.yield END) 국고_1y,
+     MIN (CASE WHEN a1.exp_month = '0036' THEN a1.yield END) 국고_3y,
+     MIN (CASE WHEN a1.exp_month = '0060' THEN a1.yield END) 국고_5y,
+     MIN (CASE WHEN a1.exp_month = '0120' THEN a1.yield END) 국고_10y,
+     MIN (CASE WHEN a1.exp_month = '0240' THEN a1.yield END) 국고_20y,
+     MIN (CASE WHEN a1.exp_month = '0360' THEN a1.yield END) 국고_30y
+FROM FNB_BOND_MATRIX@D_FNDB2_UFNGDBA a1
+WHERE     a1.bond_cd IN ('1013000')
+     AND a1.INST_CD = 'C'
+     AND exp_month IN
+            ('0001','0003','0006',
+             '0012','0024','0036',
+             '0060','0120','0240','0360')
+     AND a1.trd_dt BETWEEN '20170321' AND '20180430'
 GROUP BY trd_dt
 ORDER BY trd_dt
 ) A, 
 (
-    SELECT AA.TRD_DT, YIELD, YIELD_1, YIELD_2,
-           ROUND((YIELD+YIELD_1+YIELD_2) / 3, 3) 회사_3Y
-    FROM
-    (
-    SELECT TRD_DT, YIELD
-    FROM FNB_BOND_MATRIX@D_FNDB2_UFNGDBA
-    WHERE BOND_CD IN ('7010123')
-          AND TRD_DT BETWEEN '20170321' AND '20180430'
-          AND EXP_MONTH = '0036'
-          AND INST_CD = 'C'
-    ) AA, 
-    (
-    SELECT A.TRD_DT,
-           NVL(LAST_VALUE (NULLIF (B.YIELD_1, 0))
+    SELECT A.TRD_DT, NVL(LAST_VALUE (NULLIF (B.YIELD, 0))
                            IGNORE NULLS
-                           OVER (ORDER BY A.trd_dt), 0) YIELD_1,
-           NVL(LAST_VALUE (NULLIF (B.YIELD_2, 0))
-                           IGNORE NULLS
-                           OVER (ORDER BY A.trd_dt), 0) YIELD_2                       
+                           OVER (ORDER BY A.TRD_DT), 0) 회사_3Y
     FROM 
     (
-    SELECT TRD_DT
-      FROM fnc_calendar@D_FNDB2_UFNGDBA
-      WHERE TRD_DT BETWEEN '20170321' AND '20180430'
+        SELECT TRD_DT
+          FROM fnc_calendar@D_FNDB2_UFNGDBA
+          WHERE TRD_DT BETWEEN '20170321' AND '20180430'    
     ) A, 
     (
-    SELECT TRD_DT, 
-           MIN(CASE WHEN BOND_CD = 'F223001' THEN YIELD END) YIELD_1, 
-           MIN(CASE WHEN BOND_CD = '7040113' THEN YIELD END) YIELD_2
-    FROM FNB_BOND_MATRIX@D_FNDB2_UFNGDBA      
-    WHERE 1=1
-          AND BOND_CD IN ('F223001','7040113')
-          AND EXP_MONTH = '0036'
-          AND TRD_DT BETWEEN '20170321' AND '20180430'
-    GROUP BY TRD_DT      
+        SELECT TRD_DT, YIELD
+        FROM FNB_BOND_MATRIX@D_FNDB2_UFNGDBA
+        WHERE BOND_CD IN ('7010123')
+              AND TRD_DT BETWEEN '20170321' AND '20180430'
+              AND EXP_MONTH = '0036'
+              AND INST_CD = '9'
     ) B
     WHERE A.TRD_DT = B.TRD_DT(+)
-    ) BB 
-    WHERE 1=1 
-          AND AA.TRD_DT = BB.TRD_DT(+)
-          AND AA.TRD_DT BETWEEN '20170430' AND '20180430'
 ) B
 WHERE A.TRD_DT = B.TRD_DT
+      AND A.TRD_DT BETWEEN '20170430' AND '20180430'
 """
 
 ## 컬럼명 바꾸기 ㅇㅇ
