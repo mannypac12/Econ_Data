@@ -23,7 +23,7 @@ plt.rcParams['axes.unicode_minus'] = False
 
 locale.setlocale(locale.LC_ALL, 'korean')
 
-ed_date='20180731'
+ed_date='20180630'
 
 class sql_load:
 
@@ -525,6 +525,8 @@ class plot:
 
         data_rt = self.data.pct_change().sub(-1).cumprod()
         kspi_rt = kspi['코스피'].pct_change().sub(-1).cumprod()
+        std_dt = pd.to_datetime(ed_date) + YearBegin(-1)
+
 
         plt_dt = data_rt.sub(kspi_rt, axis=0).div(1 / 100)
 
@@ -533,7 +535,7 @@ class plot:
                                             color='red', ls='--')
 
         # self.ax_one_legend()
-
+        self.ax.axvline(x=std_dt, color='red', lw=2)
         self.fig_set_size_centimeter(size)
         self.date_tick(frq)
 
@@ -1443,6 +1445,54 @@ FROM
 ) C
     WHERE C.TRD_DT BETWEEN '20170430' AND '20180430'
 """
+
+## 주요국 5년
+
+sql_ov_bd_5yr = """
+SELECT A.TRD_DT, 한국5년, 미국5년, 일본5년, 독일5년 
+FROM
+(
+    SELECT A.TRD_DT,   
+           NVL(LAST_VALUE(NULLIF(B.한국5년, 0))
+           IGNORE NULLS OVER (ORDER BY A.trd_dt), 0) 한국5년,
+           NVL(LAST_VALUE(NULLIF(B.미국5년, 0))
+           IGNORE NULLS OVER (ORDER BY A.trd_dt), 0) 미국5년,
+           NVL(LAST_VALUE(NULLIF(B.일본5년, 0))
+           IGNORE NULLS OVER (ORDER BY A.trd_dt), 0) 일본5년,
+           NVL(LAST_VALUE(NULLIF(B.독일5년, 0))
+           IGNORE NULLS OVER (ORDER BY A.trd_dt), 0) 독일5년
+    FROM
+    (
+    SELECT trd_dt
+        FROM fnc_calendar@D_FNDB2_UFNGDBA
+            WHERE trd_dt BETWEEN '20170321' AND '20180430'
+    ) A,
+    (
+    SELECT TRD_DT,
+           MIN (CASE WHEN eco_cd = '11.02.003.014' THEN amount END) AS "한국5년",
+           MIN (CASE WHEN eco_cd = '14.07.001.007.007' THEN amount END) "미국5년",
+           MIN (CASE WHEN eco_cd = '14.07.001.006.011' THEN amount END) "일본5년",
+           MIN (CASE WHEN eco_cd = '14.07.001.002.007' THEN amount END) "독일5년"
+        FROM FNE_ECO_DATA@D_FNDB2_UFNGDBA 
+        WHERE TRD_DT BETWEEN '20170321' AND '20180430' AND
+              ECO_CD in 
+            ('11.02.003.014' -- 한국
+              , '14.07.001.007.007' -- 미국
+              , '14.07.001.006.011' -- 일본
+              , '14.07.001.002.007' -- 독일          
+            ) and TERM = 'D'
+    GROUP BY TRD_DT
+    ORDER BY TRD_DT    
+    ) B
+    WHERE 1=1
+          AND A.TRD_DT = B.TRD_DT(+)
+) A
+WHERE A.TRD_DT BETWEEN '20170430' AND '20180430'
+
+"""
+ov_bd_5yr = sql_ld.sql_reader(sql_ov_bd_5yr)
+plot(ov_bd_5yr).kr_bd_st_plt(size = (23.52, 11.2), frq='MS')
+plt.savefig('Test_Data/ov_bd_5yr.png', bbox_inches = 'tight')
 
 ## 한국 / 주요국 10년 스프래드
 
