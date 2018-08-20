@@ -31,7 +31,7 @@ class sql_load:
 
         ## Date - ed_date로 지정 및 데이터 베이스 연결
         self.date = date
-        self.conn = cxo.connect(user='uffdba', password='venus2006', dsn='funddb')
+        self.conn = cxo.connect(user='******', password='******', dsn='******')
 
 ## SQL Date Changer
 
