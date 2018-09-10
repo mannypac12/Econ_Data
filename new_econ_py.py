@@ -23,7 +23,7 @@ plt.rcParams['axes.unicode_minus'] = False
 
 locale.setlocale(locale.LC_ALL, 'korean')
 
-ed_date='20180630'
+ed_date='20180831'
 
 class sql_load:
 
@@ -31,7 +31,7 @@ class sql_load:
 
         ## Date - ed_date로 지정 및 데이터 베이스 연결
         self.date = date
-        self.conn = cxo.connect(user='uffdba', password='venus2006', dsn='funddb')
+        self.conn = cxo.connect(user='******', password='******', dsn='******')
 
 ## SQL Date Changer
 
@@ -436,6 +436,7 @@ class plot:
         self.ax_one_legend()
 
         self.esc_option()
+        self.PercFormatter()
         self.date_tick(frq)
 
         return self.fig, self.ax
@@ -486,6 +487,7 @@ class plot:
         self.ax_one_legend()
         self.ax.set_xlabel('')
         self.ax.set_ylabel('')
+        self.PercFormatter()
 
         return self.fig, self.ax
 
@@ -497,6 +499,7 @@ class plot:
         self.ax_one_legend()
         self.esc_option()
         self.date_tick(frq)
+        self.PercFormatter()
 
         return self.fig, self.ax
 
@@ -530,17 +533,17 @@ class plot:
 
         plt_dt = data_rt.sub(kspi_rt, axis=0).div(1 / 100)
 
-        plt_dt.plot(ax=self.ax, legend=True, lw=3)
-        (kspi_rt.sub(kspi_rt, axis=0)).plot(ax=self.ax, legend=True, lw=3,
+        plt_dt.plot(ax=self.ax, legend=True, lw=1.5)
+        (kspi_rt.sub(kspi_rt, axis=0)).plot(ax=self.ax, legend=True, lw=1.5,
                                             color='red', ls='--')
 
         # self.ax_one_legend()
-        self.ax.axvline(x=std_dt, color='red', lw=2)
+        self.ax.axvline(x=std_dt, color='red', lw=1.5)
         self.fig_set_size_centimeter(size)
         self.date_tick(frq)
 
         self.esc_option()
-
+        self.PercFormatter()
         self.ax.legend(loc='upper center', ncol=len(self.columns) + 1,
                        bbox_to_anchor=(0.5, 1.23), frameon=False)  # legend(범주) 변경
 
@@ -559,7 +562,7 @@ class plot:
         # l.set_title('')
 
         self.esc_option()
-
+        self.PercFormatter()
         # for spn in ['top', 'right']:
         #     ax.spines[spn].set_color('None')
 
@@ -604,7 +607,7 @@ class plot:
         return self.fig, self.ax, ax1
 
     def PercFormatter(self):
-        return self.ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:.2%}'.format(y)))
+        return self.ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:.2%}'.format(y/100)))
 
     def MoneyFormatter(self):
         return self.ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:,}'.format(y)))
@@ -787,6 +790,7 @@ WHERE bb.trd_dt BETWEEN '20170430' AND '20180430'
 
 dol_dt = sql_ld.sql_reader(dol_sql, cond=True)
 plot(dol_dt).dol_graph((23.52, 11.2), frq = 'MS')
+dol_dt.to_csv('Test_Data/dol_graph.csv', encoding = 'cp949')
 plt.savefig('Test_Data/dol_graph.png', bbox_inches = 'tight')
 
 ## 수출입데이터
@@ -1027,7 +1031,7 @@ plt.savefig('Test_Data/kdq_buy_plt.png', bbox_inches = 'tight')
 ## 국내채권
 ## 단기
 sql_kr_bd_st = """
-SELECT A.TRD_DT, A.콜, A.CD, A.CP, B.기준금리
+SELECT DISTINCT A.TRD_DT, A.콜, A.CD, A.CP, B.기준금리
 FROM 
 (
 SELECT A.TRD_DT, 
@@ -1075,7 +1079,8 @@ WHERE A.TRD_DT = B.TRD_DT(+)
 ) B
 WHERE 1=1
       AND A.TRD_DT = B.TRD_DT(+)
-      AND A.TRD_DT BETWEEN '20170321' AND '20180430'
+      AND A.TRD_DT BETWEEN '20170430' AND '20180430'
+      ORDER BY A.TRD_DT
 """
 
 kr_bd_st_dt = sql_ld.sql_reader(sql_kr_bd_st)
@@ -1601,7 +1606,7 @@ from
   a.nav_1M / power(10,8) OneM,
   a.nav_3M / power(10,8) ThrM,
   a.nav_6M / power(10,8) SxM,
-  a.nav_YTD / power(10,8) YTD,
+  a.nav_YTD / power(10,8) YTD, 
   a.nav_1Y / power(10,8) OneY
   from F2_CDT021 a, 
   (
