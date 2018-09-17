@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas.tseries.offsets import YearBegin, MonthBegin, MonthEnd
+from pandas.tseries.offsets import YearBegin, MonthBegin
 from dateutil.relativedelta import *
 import cx_Oracle as cxo
 import matplotlib.pyplot as plt
@@ -23,7 +23,7 @@ plt.rcParams['axes.unicode_minus'] = False
 
 locale.setlocale(locale.LC_ALL, 'korean')
 
-ed_date='20180831'
+ed_date='20180630'
 
 class sql_load:
 
@@ -363,10 +363,10 @@ class plot:
                    .reset_index()
 
         data['무역수지'].plot(ax=self.ax, legend=True, kind='bar', color='green', alpha=0.5)
-        data['국가별수출액'].plot(ax=self.ax, lw=3, legend=True)
-        data['국가별수입액'].plot(ax=self.ax, lw=3, legend=True)
+        data['국가별수출액'].plot(ax=self.ax, lw=3, legend=True, ls ='-.')
+        data['국가별수입액'].plot(ax=self.ax, lw=3, legend=True, ls ='-')
 
-        self.ax.set_xlim(left=-0.5, right=10.5)
+        self.ax.set_xlim(left=-0.5, right=11.5)
         self.ax.set_ylim(bottom=data['무역수지'].min()-10, top=data['국가별수출액'].max() + 1)
 
         self.esc_option()
@@ -381,7 +381,7 @@ class plot:
         ax1 = self.twin_x()
 
         self.data['원달러'].plot(ax=self.ax, color = 'coral', legend=True, lw=3)
-        self.data['달러인덱스'].plot(ax=ax1, color = 'green', legend=True, lw=3)
+        self.data['달러인덱스'].plot(ax=ax1, color = 'green', legend=True, lw=3, ls='-.')
 
         self.date_tick(frq = frq)
         self.ax.get_yaxis().set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
@@ -394,14 +394,21 @@ class plot:
     def stk_plot(self, size, cols, frq, date=ed_date):
 
         std_dt = pd.to_datetime(date) + YearBegin(-1)
+        line_style = ['-', '-.', '--']
 
-        plt_dt = (self.data[cols]\
-                  .div(self.data[cols].loc[std_dt], axis=1))\
-                  .div(1 / 100)
+        for col, ls in zip(cols, line_style):
+
+            plt_dt = (self.data[col]\
+                      .div(self.data[col].loc[std_dt]))\
+                      .div(1 / 100)
+
+            plt_dt.plot(ax=self.ax, legend=True, lw=3, ls = ls)
+
+        # plt_dt = (self.data[cols]\
+        #           .div(self.data[cols].loc[std_dt], axis=1))\
+        #           .div(1 / 100)
 
         self.fig_set_size_centimeter(size)
-
-        plt_dt.plot(ax=self.ax, legend=True, lw=3)
 
         # self.ax_one_legend()
 
@@ -431,10 +438,18 @@ class plot:
 
         self.fig_set_size_centimeter(size)
         dt = pd.to_datetime(ed_date) - relativedelta(years=1)
-        self.data.loc[dt:].plot(ax=self.ax, legend=True, lw=3)
+
+        # self.data.loc[dt:].plot(ax=self.ax, legend=True, lw=3)
+
+        cols = self.data.columns
+        ncols = len(cols)
+        lin_style = ['-', '--', '-.', '--', '-.', '-','-.', '--', '-'][:ncols]
+
+        for col, ls in zip(cols, lin_style):
+
+            self.data.loc[dt:][col].plot(ax=self.ax, legend=True, lw=3, ls=ls)
 
         self.ax_one_legend()
-
         self.esc_option()
         self.PercFormatter()
         self.date_tick(frq)
@@ -512,8 +527,14 @@ class plot:
         data_c['회사AA-스프래드'] = (data_c['회사_3Y'] - data_c['국고_3Y']).div(1 / 100)
         data_c.columns = ['국고3년', '회사AA- 3년', '회사AA-스프래드']
 
+        lin_cols =  ['국고3년', '회사AA- 3년']
+        lin_style = ['-.', '-']
 
-        data_c[['국고3년', '회사AA- 3년']].plot(ax=self.ax, legend = True, lw=3)
+        for col, ls in zip(lin_cols, lin_style):
+
+            data_c[col].plot(ax=self.ax, legend=True, lw=3, ls=ls)
+
+        # data_c[['국고3년', '회사AA- 3년']].plot(ax=self.ax, legend = True, lw=3, ls = '-.')
         data_c['회사AA-스프래드'].plot(ax = ax1, kind='area', color = 'grey',
                                     alpha = 0.8, legend = True, lw = 3)
 
@@ -530,10 +551,17 @@ class plot:
         kspi_rt = kspi['코스피'].pct_change().sub(-1).cumprod()
         std_dt = pd.to_datetime(ed_date) + YearBegin(-1)
 
-
         plt_dt = data_rt.sub(kspi_rt, axis=0).div(1 / 100)
 
-        plt_dt.plot(ax=self.ax, legend=True, lw=1.5)
+        cols = plt_dt.columns
+        lin_style = ['-.', '--', '-', '-.', '--']
+
+        for col, ls in zip(cols, lin_style):
+
+            plt_dt[col].plot(ax=self.ax, legend=True, lw=1.5, ls=ls)
+
+
+        # plt_dt.plot(ax=self.ax, legend=True, lw=1.5)
         (kspi_rt.sub(kspi_rt, axis=0)).plot(ax=self.ax, legend=True, lw=1.5,
                                             color='red', ls='--')
 
@@ -554,7 +582,13 @@ class plot:
         self.fig_set_size_centimeter(size)
 
         self.data.columns = ['미 10년물 스프래드', '일 10년물 스프래드', '독 10년물 스프래드']
-        self.data.plot(ax= self.ax, legend=True, lw=3)
+        lin_style = ['-', '-.','--']
+
+        for col, ls in zip(self.data.columns, lin_style):
+
+            self.data[col].plot(ax=self.ax, legend=True, lw=3, ls=ls)
+
+        # self.data.plot(ax= self.ax, legend=True, lw=3)
 
         self.date_tick(frq)
 
@@ -571,8 +605,13 @@ class plot:
     def ted_sprd_plt(self, size, frq):
 
         self.fig_set_size_centimeter(size)
+        cols = ['미국3개월', '리보3개월']
+        lin_style = ['-.', '--']
 
-        self.data[['미국3개월', '리보3개월']].plot(ax=self.ax, lw=3)
+        for col, ls in zip(cols,lin_style):
+            self.data[col].plot(ax=self.ax, lw=3, ls=ls)
+
+        # self.data[['미국3개월', '리보3개월']].plot(ax=self.ax, lw=3)
         self.data[['TED']].plot(ax=self.ax, kind='area', alpha=0.5,
                            lw=0, color='gray')
 
@@ -827,6 +866,7 @@ FROM
     GROUP BY a.trd_dt
     ORDER BY a.trd_dt DESC
 ) B
+ORDER BY B.TRD_DT
 """
 
 kr_mcr_dt = sql_ld.sql_reader(kr_mcr_sql, cond=True)
