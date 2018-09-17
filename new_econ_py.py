@@ -14,7 +14,7 @@ import re
 ## Class Data Loading
 ## Class Chart
 ## Class Table
-
+b
 locale.setlocale(locale.LC_ALL, 'korean')
 
 plt.rcParams['font.family'] = 'KopubDotum'
