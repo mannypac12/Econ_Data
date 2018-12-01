@@ -15,8 +15,8 @@ library(zoo)
 library(quantmod)
 library(plyr)
 
-ch <- odbcConnect("funddb", uid="uffdba", pwd="venus2006")
-ch1 <- odbcConnect("realdb", uid="ufngdba", pwd="venus2002")
+ch <- odbcConnect("funddb", uid="******", pwd="******")
+ch1 <- odbcConnect("realdb", uid="******", pwd="******")
 
 options(scipen = 999)
 ### Fonts
